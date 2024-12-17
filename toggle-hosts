@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# Ensure script runs with sudo privileges
+if [[ $EUID -ne 0 ]]; then
+    echo "This script requires sudo privileges. Re-running with sudo..."
+    sudo bash "$0" "$@"
+    exit $?
+fi
+
+# Define the hosts file path
+HOSTS_FILE="/etc/hosts"
+
+# Define the two lines to toggle
+LOCAL_LINE="127.0.0.1 xxx.com yyy.xxx.com"
+REMOTE_LINE="21.113.161.131 xxx.com yyy.xxx.com"
+
+# Function to show the current environment
+show_environment() {
+    if grep -Fxq "$LOCAL_LINE" "$HOSTS_FILE"; then
+        echo "Current Environment: LOCAL (localhost is active)."
+    elif grep -Fxq "$REMOTE_LINE" "$HOSTS_FILE"; then
+        echo "Current Environment: REMOTE (remote IP is active)."
+    else
+        echo "Environment status: Unknown (both lines may be commented out)."
+    fi
+}
+
+# No argument: Show current environment
+if [ $# -eq 0 ]; then
+    show_environment
+    exit 0
+fi
+
+# Process arguments
+MODE=$1
+
+case "$MODE" in
+    local)
+        # Enable localhost and disable remote IP
+        sed -i.bak "s|^# $LOCAL_LINE|$LOCAL_LINE|" "$HOSTS_FILE"
+        sed -i.bak "s|^$REMOTE_LINE|# $REMOTE_LINE|" "$HOSTS_FILE"
+        echo "Switched to LOCAL mode (localhost is active)."
+        ;;
+    remote)
+        # Enable remote IP and disable localhost
+        sed -i.bak "s|^# $REMOTE_LINE|$REMOTE_LINE|" "$HOSTS_FILE"
+        sed -i.bak "s|^$LOCAL_LINE|# $LOCAL_LINE|" "$HOSTS_FILE"
+        echo "Switched to REMOTE mode (remote IP is active)."
+        ;;
+    *)
+        echo "Invalid argument. Use 'local', 'remote', or no arguments to check the current environment."
+        exit 1
+        ;;
+esac
+
+echo "Hosts file updated successfully."
